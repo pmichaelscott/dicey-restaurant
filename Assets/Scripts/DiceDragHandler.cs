@@ -11,24 +11,22 @@ public class DiceDragHandler : MonoBehaviour
     [Header("Raycast")]
     [SerializeField] private LayerMask diceLayerMask = ~0;
     [SerializeField] private LayerMask slotLayerMask = ~0;
-
-    [Header("Drag Plane")]
-    [Tooltip("If true, drag plane is fixed at this Y. If false, plane is at dice's current Y when drag starts.")]
-    [SerializeField] private bool useFixedPlaneY = false;
-    [SerializeField] private float fixedPlaneY = 0f;
+    
 
     [Header("Slot Behavior")]
     [SerializeField] private bool keepKinematicWhenSlotted = true;
 
-    [Header("Drag Height")]
-    [SerializeField] private float tableY = 0f;          // set to your tray/slot surface Y
-    [SerializeField] private float hover = 0.01f;         // tiny lift to avoid z-fighting
-    private float dragY;
+    
+    [Header("Drag Surface")]
+    [SerializeField] private LayerMask dragSurfaceMask;
+    [SerializeField] private float hoverHeight = 0.01f;
+    [SerializeField] private bool useXZOffset = false;
+
+    private Vector3 planarGrabOffset = Vector3.zero;
 
     private Dice dice;
     private bool dragging = false;
-    private Vector3 grabOffset = Vector3.zero;
-    private Plane dragPlane;
+    
     private DiceSlot currentSlot;
 
     private void Awake()
@@ -58,55 +56,53 @@ public class DiceDragHandler : MonoBehaviour
 
     private void TryBeginDrag()
     {
-        // Global gate (optional)
-        if (gameManager != null && !gameManager.CanInteract)
-            return;
+     if (gameManager != null && !gameManager.CanInteract)
+        return;
 
-        // Per-die gate
-        if (!dice.isInteractable)
-            return;
+    if (!dice.isInteractable)
+        return;
 
-        Ray ray = cam.ScreenPointToRay(input.PointerPosition);
+    Ray ray = cam.ScreenPointToRay(input.PointerPosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 200f, diceLayerMask))
         {
             if (hit.collider != dice.col)
                 return;
 
+            if (dice.CurrentSlot != null)
+            {
+                dice.CurrentSlot.Vacate(dice);
+                dice.CurrentSlot = null;
+            }
+
             dragging = true;
             dice.SetState(DiceState.Dragging);
-
-            // Stop physics fighting while dragging
             dice.rb.isKinematic = true;
 
-            float halfHeight = dice.col.bounds.extents.y;
-            dragY = tableY + halfHeight + hover;
-
-            // Only keep XZ offset (prevents sinking)
-            grabOffset.y = 0f;
-
-            // Set drag plane
-            float y = useFixedPlaneY ? fixedPlaneY : transform.position.y;
-            dragPlane = new Plane(Vector3.up, new Vector3(0f, y, 0f));
-
-            // Keep the initial offset so the die doesn't jump
-            grabOffset = transform.position - hit.point;
-
-   
+            // Optional: keep only XZ offset
+            planarGrabOffset = transform.position - hit.point;
+            planarGrabOffset.y = 0f;
         }
     }
 
     private void DragUpdate()
     {
-        Ray ray = cam.ScreenPointToRay(input.PointerPosition);
+    Ray ray = cam.ScreenPointToRay(input.PointerPosition);
 
-        if (dragPlane.Raycast(ray, out float enter))
-        {
-            Vector3 point = ray.GetPoint(enter);
-            Vector3 target = point + grabOffset;
-            target.y = dragY;              // lock height
-            transform.position = target;
-        }
+            if (Physics.Raycast(ray, out RaycastHit hit, 500f, dragSurfaceMask))
+            {
+                float halfHeight = dice.col.bounds.extents.y;
+
+                Vector3 target = hit.point + Vector3.up * (halfHeight + hoverHeight);
+
+                if (useXZOffset)
+                {
+                    target.x += planarGrabOffset.x;
+                    target.z += planarGrabOffset.z;
+                }
+
+                transform.position = target;
+            }
 
         UpdateCurrentSlot();
     }
@@ -142,12 +138,13 @@ public class DiceDragHandler : MonoBehaviour
 
     private void SnapIntoSlot(DiceSlot slot)
     {
-        Transform sp = slot.snapPoint;
-        transform.SetPositionAndRotation(sp.position, sp.rotation);
+        Transform sp = slot.SnapPoint;
+        transform.position = sp.position;
+        
 
         slot.Occupy(dice);
+        dice.CurrentSlot = slot;
         dice.SetState(DiceState.Slotted);
-
         dice.rb.isKinematic = keepKinematicWhenSlotted;
     }
 }

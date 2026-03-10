@@ -390,10 +390,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eaf6e2fb58814374d8bc86fece6ac415, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiceRoller
-  impulseMin: 3.5
-  impulseMax: 6.5
-  torqueMin: 8
-  torqueMax: 16
+  impulseMin: 7
+  impulseMax: 12
+  torqueMin: 14
+  torqueMax: 24
   linearThreshold: 0.05
   angularThreshold: 0.2
   settleTime: 0.5
@@ -449,3 +449,4 @@ MonoBehaviour:
     marker: {fileID: 7459560305266051535}
   - value: 6
     marker: {fileID: 497798707052518122}
+  <CurrentValue>k__BackingField: 1

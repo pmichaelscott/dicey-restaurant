@@ -11,8 +11,9 @@ public class Dice : MonoBehaviour
      public DiceState state { get; private set; } = DiceState.Idle;
      public Rigidbody rb {get; private set;}
     public Collider col {get; private set;}
+    public DiceSlot CurrentSlot {get; set;}
 
-     public bool isInteractable => state == DiceState.Idle;
+     public bool isInteractable => state == DiceState.Idle || state == DiceState.Slotted;
 
     [SerializeField] private float idleCheckDelay = 0.5f;
     float _idleCheckTimer;
